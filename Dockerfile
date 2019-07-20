@@ -8,4 +8,4 @@ COPY ${DEPENDENCY}/BOOT-INF/lib app/lib
 
 EXPOSE 8084
 
-ENTRYPOINT ["java", "-cp", "app:app/lib/*", "com.swapnilsankla.screeningservice.ScreeningServiceApplicationKt"]
+ENTRYPOINT ["java", "-cp", "app:app/lib/*", "com.swapnilsankla.screeningservice.ApplicationKt"]
