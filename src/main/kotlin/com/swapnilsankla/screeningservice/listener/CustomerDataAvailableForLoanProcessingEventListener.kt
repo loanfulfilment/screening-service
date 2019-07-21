@@ -26,7 +26,7 @@ class CustomerDataAvailableForLoanProcessingEventListener(@Autowired val reposit
         customerData.pan ?: return screeningDataAvailableEventPublisher.publish(ScreeningResult(customerData.customerId, FraudStatus.UNKNOWN))
 
         repository
-                .findByNameAndPan(customerData.name, customerData.pan!!)
+                .findByNameAndPan(customerData.name, customerData.pan)
                 .switchIfEmpty(Mono.error(ScreeningDataNotFound(customerData.customerId)))
                 .map { mapToScreeningResult(customerData.customerId, it) }
                 .doOnError { mapToScreeningResult(customerData.customerId, null) }
