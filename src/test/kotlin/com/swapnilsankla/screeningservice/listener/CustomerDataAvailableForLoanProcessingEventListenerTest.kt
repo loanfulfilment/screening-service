@@ -34,10 +34,10 @@ internal class CustomerDataAvailableForLoanProcessingEventListenerTest {
         every { repository.findByNameAndPan(any(), any()) } returns
                 Mono.just(Screening("Swapnil Sankla", "BJKHGLDA", FraudStatus.CLEAR))
 
-        every { publisher.publish(ScreeningResult("1", FraudStatus.CLEAR)) } returns Unit
+        every { publisher.publish(ScreeningResult("1", FraudStatus.CLEAR), "trace-id".toByteArray()) } returns Unit
 
         val customer = Customer("1", "Swapnil Sankla", "BJKHGLDA", "Pune")
-        listener.listen(objectMapper.writeValueAsString(customer))
+        listener.listen(objectMapper.writeValueAsString(customer), mapOf("uber-trace-id" to "trace-id".toByteArray()))
     }
 
     @Test
@@ -50,10 +50,10 @@ internal class CustomerDataAvailableForLoanProcessingEventListenerTest {
         every { repository.findByNameAndPan(any(), any()) } returns
                 Mono.just(Screening("Swapnil Sankla", "BJKHGLDA", FraudStatus.FRAUDULENT))
 
-        every { publisher.publish(ScreeningResult("1", FraudStatus.FRAUDULENT)) } returns Unit
+        every { publisher.publish(ScreeningResult("1", FraudStatus.FRAUDULENT), "trace-id".toByteArray()) } returns Unit
 
         val customer = Customer("1", "Swapnil Sankla", "BJKHGLDA", "Pune")
-        listener.listen(objectMapper.writeValueAsString(customer))
+        listener.listen(objectMapper.writeValueAsString(customer), mapOf("uber-trace-id" to "trace-id".toByteArray()))
     }
 
     @Test
@@ -66,10 +66,10 @@ internal class CustomerDataAvailableForLoanProcessingEventListenerTest {
         every { repository.findByNameAndPan(any(), any()) } returns
                 Mono.just(Screening("Swapnil Sankla", "BJKHGLDA", FraudStatus.CLEAR))
 
-        every { publisher.publish(ScreeningResult("1", FraudStatus.UNKNOWN)) } returns Unit
+        every { publisher.publish(ScreeningResult("1", FraudStatus.UNKNOWN), "trace-id".toByteArray()) } returns Unit
 
         val customer = Customer("1", "Swapnil Sankla", null, "Pune")
-        listener.listen(objectMapper.writeValueAsString(customer))
+        listener.listen(objectMapper.writeValueAsString(customer), mapOf("uber-trace-id" to "trace-id".toByteArray()))
     }
 
     @Test
@@ -81,10 +81,10 @@ internal class CustomerDataAvailableForLoanProcessingEventListenerTest {
 
         every { repository.findByNameAndPan(any(), any()) } returns Mono.empty()
 
-        every { publisher.publish(ScreeningResult("1", FraudStatus.UNKNOWN)) } returns Unit
+        every { publisher.publish(ScreeningResult("1", FraudStatus.UNKNOWN), "trace-id".toByteArray()) } returns Unit
 
         val customer = Customer("1", "Swapnil Sankla", "BJKHGLDA", "Pune")
-        listener.listen(objectMapper.writeValueAsString(customer))
+        listener.listen(objectMapper.writeValueAsString(customer), mapOf("uber-trace-id" to "trace-id".toByteArray()))
     }
 
 

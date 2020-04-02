@@ -8,6 +8,7 @@ import com.swapnilsankla.screeningservice.publisher.ScreeningDataAvailableEventP
 import com.swapnilsankla.screeningservice.repository.ScreeningRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.messaging.handler.annotation.Headers
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 import java.util.logging.Logger
@@ -17,20 +18,23 @@ class CustomerDataAvailableForLoanProcessingEventListener(@Autowired val reposit
                                                           @Autowired val objectMapper: ObjectMapper,
                                                           @Autowired val screeningDataAvailableEventPublisher: ScreeningDataAvailableEventPublisher) {
 
-    @KafkaListener(topics = ["customerDataAvailableForLoanProcessing"])
-    fun listen(customerDataAvailableForLoanProcessingEventString: String) {
-        val customerData = objectMapper.readValue(customerDataAvailableForLoanProcessingEventString, Customer::class.java)
-        Logger.getLogger(CustomerDataAvailableForLoanProcessingEventListener::class.simpleName)
-                .info("customerDataAvailableForLoanProcessing event received for customer ${customerData.customerId}")
+    private val logger = Logger.getLogger(CustomerDataAvailableForLoanProcessingEventListener::class.simpleName)
 
-        customerData.pan ?: return screeningDataAvailableEventPublisher.publish(ScreeningResult(customerData.customerId, FraudStatus.UNKNOWN))
+    @KafkaListener(topics = ["customerDataAvailableForLoanProcessing"])
+    fun listen(customerDataAvailableForLoanProcessingEventString: String, @Headers headers: Map<String, Any>) {
+        val customerData = objectMapper.readValue(customerDataAvailableForLoanProcessingEventString, Customer::class.java)
+        logger.info("customerDataAvailableForLoanProcessing event received for customer ${customerData.customerId}")
+
+        val traceId = headers["uber-trace-id"] as? ByteArray ?: ByteArray(1)
+
+        customerData.pan ?: return screeningDataAvailableEventPublisher.publish(ScreeningResult(customerData.customerId, FraudStatus.UNKNOWN), traceId)
 
         repository
                 .findByNameAndPan(customerData.name, customerData.pan)
                 .switchIfEmpty(Mono.error(ScreeningDataNotFound(customerData.customerId)))
                 .map { mapToScreeningResult(customerData.customerId, it) }
                 .doOnError { mapToScreeningResult(customerData.customerId, null) }
-                .doOnSuccess(screeningDataAvailableEventPublisher::publish)
+                .doOnSuccess { screeningDataAvailableEventPublisher.publish(it, traceId) }
                 .subscribe()
     }
 
