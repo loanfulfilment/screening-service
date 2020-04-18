@@ -6,6 +6,7 @@ import com.swapnilsankla.screeningservice.model.Screening
 import com.swapnilsankla.screeningservice.model.ScreeningResult
 import com.swapnilsankla.screeningservice.publisher.ScreeningDataAvailableEventPublisher
 import com.swapnilsankla.screeningservice.repository.ScreeningRepository
+import com.swapnilsankla.tracestarter.TraceIdExtractor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.messaging.handler.annotation.Headers
@@ -16,7 +17,8 @@ import java.util.logging.Logger
 @Component
 class CustomerDataAvailableForLoanProcessingEventListener(@Autowired val repository: ScreeningRepository,
                                                           @Autowired val objectMapper: ObjectMapper,
-                                                          @Autowired val screeningDataAvailableEventPublisher: ScreeningDataAvailableEventPublisher) {
+                                                          @Autowired val screeningDataAvailableEventPublisher: ScreeningDataAvailableEventPublisher,
+                                                          @Autowired val traceIdExtractor: TraceIdExtractor) {
 
     private val logger = Logger.getLogger(CustomerDataAvailableForLoanProcessingEventListener::class.simpleName)
 
@@ -25,16 +27,16 @@ class CustomerDataAvailableForLoanProcessingEventListener(@Autowired val reposit
         val customerData = objectMapper.readValue(customerDataAvailableForLoanProcessingEventString, Customer::class.java)
         logger.info("customerDataAvailableForLoanProcessing event received for customer ${customerData.customerId}")
 
-        val traceId = headers["uber-trace-id"] as? ByteArray ?: ByteArray(1)
+        val trace = traceIdExtractor.fromKafkaHeaders(headers)
 
-        customerData.pan ?: return screeningDataAvailableEventPublisher.publish(ScreeningResult(customerData.customerId, FraudStatus.UNKNOWN), traceId)
+        customerData.pan ?: return screeningDataAvailableEventPublisher.publish(ScreeningResult(customerData.customerId, FraudStatus.UNKNOWN), trace)
 
         repository
                 .findByNameAndPan(customerData.name, customerData.pan)
                 .switchIfEmpty(Mono.error(ScreeningDataNotFound(customerData.customerId)))
                 .map { mapToScreeningResult(customerData.customerId, it) }
                 .doOnError { mapToScreeningResult(customerData.customerId, null) }
-                .doOnSuccess { screeningDataAvailableEventPublisher.publish(it, traceId) }
+                .doOnSuccess { screeningDataAvailableEventPublisher.publish(it, trace) }
                 .subscribe()
     }
 

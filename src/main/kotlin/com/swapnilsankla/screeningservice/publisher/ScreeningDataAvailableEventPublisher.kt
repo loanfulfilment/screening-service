@@ -1,33 +1,24 @@
 package com.swapnilsankla.screeningservice.publisher
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.swapnilsankla.screeningservice.model.Screening
 import com.swapnilsankla.screeningservice.model.ScreeningResult
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.header.internals.RecordHeader
+import com.swapnilsankla.tracestarter.CustomKafkaTemplate
+import com.swapnilsankla.tracestarter.Trace
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Component
 import java.util.logging.Logger
 
 @Component
-class ScreeningDataAvailableEventPublisher(@Autowired val kafkaTemplate: KafkaTemplate<String, String>,
+class ScreeningDataAvailableEventPublisher(@Autowired val kafkaTemplate: CustomKafkaTemplate,
                                            @Autowired val objectMapper: ObjectMapper) {
 
-    fun publish(screening: ScreeningResult, traceId: ByteArray) {
+    fun publish(screening: ScreeningResult, trace: Trace) {
         Logger.getLogger(ScreeningDataAvailableEventPublisher::class.simpleName).info("raising event $screening")
 
-        kafkaTemplate.send(buildMessage(screening, traceId))
-    }
-
-    private fun buildMessage(screening: ScreeningResult, traceId: ByteArray): ProducerRecord<String, String> {
-        val message = ProducerRecord<String, String>(
-                "screeningDataAvailableForLoanProcessing",
-                objectMapper.writeValueAsString(screening)
+        kafkaTemplate.publish(
+                topic = "screeningDataAvailableForLoanProcessing",
+                data = screening,
+                trace = trace
         )
-        message.headers().remove("uber-trace-id")
-        message.headers().add("uber-trace-id", traceId)
-
-        return message
     }
 }
